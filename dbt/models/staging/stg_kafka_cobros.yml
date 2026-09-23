@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_kafka_cobros
+    description: "Eventos de cobros recibidos desde Kafka, clasificados y enriquecidos para el pipeline TrustSync."
+    columns:
+      - name: id_recibo
+        description: "Identificador del recibo"
+        tests:
+          - not_null
+
+      - name: motivo
+        description: "Tipo de movimiento recibido desde Kafka"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DB', 'CB', 'PB', 'PA']
+
+      - name: estado_evento
+        description: "Clasificación TrustSync del evento"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['BLOQUEADO', 'COBRO', 'DEBITO', 'PAGO_BASE', 'DESCONOCIDO']
+
+      - name: flag_riesgo
+        description: "1 si el evento es un PA bloqueador, 0 en caso contrario"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]

@@ -1,0 +1,20 @@
+# Credenciales
+kafka/.env
+**/.env
+
+# DBT
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+*.duckdb
+
+# Airflow
+airflow/logs/
+airflow/plugins/
+airflow/config/
+airflow/docker-compose.yaml   # demasiado pesado y específico de local
+
+# Python
+__pycache__/
+*.pyc
+trustenv/
