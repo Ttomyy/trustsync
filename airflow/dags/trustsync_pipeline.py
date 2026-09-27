@@ -9,9 +9,9 @@ default_args = {
     'retry_delay': timedelta(minutes=2),
 }
 
-DBT_DIR = 'home/tomy/trustsync/proyectos/trustsync_dbt'
-KAFKA_DIR = 'home/tomy/trustsync/kafka'
-VENV = 'home/tomy/trustsync/trustenv/bin'
+DBT_DIR = '/home/tomy/trustsync/proyectos/trustsync_dbt'
+KAFKA_DIR = '/home/tomy/trustsync/kafka'
+VENV = '/home/tomy/trustsync/trustenv/bin'
 
 with DAG(
     dag_id='trustsync_pipeline',
@@ -26,31 +26,44 @@ with DAG(
     # Tarea 1 - Publicar eventos en kafka
     kafka_producer = BashOperator(
         task_id='kafka_producer',
-        bash_command=f'cd {KAFKA_DIR} && '                     
-                     f'export $(cat .env | xrgs) && '
-                     f'{VENV}/python producer_cobros.py || true',
-    )
-    #tarea 2 - Consumir eventos de kafka y generar csv
+        bash_command=(
+            f'cd {KAFKA_DIR} && '
+            f'export $(grep -v "^#" .env | xargs) && '
+            f'python producer_cobros.py'
+        ),
+)
+
     kafka_consumer = BashOperator(
         task_id='kafka_consumer',
-        bash_command=f'cd {KAFKA_DIR} && '
-                     f'export $(cat .env | xrgs) && '
-                     f'timeout 30 {VENV}/python consumer_cobros.py || true',
+        bash_command=(
+            f'cd {KAFKA_DIR} && '
+            f'export $(grep -v "^#" .env | xargs) && '
+            f'timeout 30 python consumer_cobros.py || [ $? -eq 124 ]'
+            
+        ),
     )
-    
-    # Tarea 3 - Ejecutar dbt y transformar los datos
+
+    pii_scan = BashOperator(
+        task_id='presidio_pii_scan',
+        bash_command=(
+            f'cd {KAFKA_DIR} && '
+            f'export $(grep -v "^#" .env | xargs) && '
+            f'python pii_detector.py'
+        ),
+    )
+
     dbt_run = BashOperator(
         task_id='dbt_run',
-        bash_command=f'cd {DBT_DIR} && '
-                     f'{VENV}/dbt run || true',
+        bash_command=f'cd {DBT_DIR} && dbt run',
     )
-    
+
     dbt_test = BashOperator(
         task_id='dbt_test',
-        bash_command=f'cd {DBT_DIR} && '
-                     f'{VENV}/dbt test || true',
+        bash_command=f'cd {DBT_DIR} && dbt test',
     )
     
-    kafka_producer >> kafka_consumer >> dbt_run >> dbt_test
+
+    
+    kafka_producer >> kafka_consumer >> pii_scan >> dbt_run >> dbt_test
     
     

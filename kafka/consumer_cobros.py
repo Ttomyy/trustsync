@@ -1,67 +1,79 @@
 import os
 import json
+from datetime import datetime, timezone
+from confluent_kafka import Consumer, KafkaError
+from pymongo import MongoClient
 from  dotenv import load_dotenv
-from confluent_kafka import Consumer, KafkaException, KafkaError
-
-
 load_dotenv()
-
+# ── Kafka config ──────────────────────────────────────────
 consumer = Consumer({
     'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS'),
-    'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'SASL_SSL'),
-    'sasl.mechanism': os.getenv('SASL_MECHANISM', 'PLAIN'),
-    'sasl.username': os.getenv('KAFKA_KEY'),
-    'sasl.password': os.getenv('KAFKA_SECRET'),
-    'group.id': 'cobros-desde-06',
-    'auto.offset.reset': 'earliest'
+        'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'SASL_SSL'),
+        'sasl.mechanism': os.getenv('SASL_MECHANISM', 'PLAIN'),
+        'sasl.username': os.getenv('KAFKA_KEY'),
+        'sasl.password': os.getenv('KAFKA_SECRET'),
+        'group.id': 'trustsync-mongo-02',
+        'auto.offset.reset': 'earliest'
 })
 
+# ── MongoDB Atlas config ───────────────────────────────────
+MONGO_URI = (
+    #f"mongodb+srv://{os.getenv('MONGO_USER')}:{os.getenv('MONGO_PASS')}"
+    #f"@{os.getenv('MONGO_CLUSTER')}/?retryWrites=true&w=majority"
+    os.getenv('MONGO_URI')
+)
+
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client[os.getenv('MONGO_DB')]
+coleccion = db['cobros_eventos']
+
+print("🎧 Escuchando topic cobros-eventos → MongoDB Atlas...\n")
+
+eventos_insertados = 0
 consumer.subscribe(['cobros-eventos'])
 
-print("🎧 Escuchando topic cobros-eventos...\n")
-
-
-import csv
-
-eventos_procesados = [] 
-    
-mensajes_recibidos = 0
 try:
     while True:
-        msg = consumer.poll(3.0)  # Espera 1 segundo por un mensaje
+        msg = consumer.poll(1.0)
+
         if msg is None:
             continue
+
         if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                # Fin de la partición, no es un error crítico
-                continue
-            else:
-                raise KafkaException(msg.error())
-        
+            print(f"❌ Error Kafka: {msg.error()}")
+            break
+
         evento = json.loads(msg.value().decode('utf-8'))
-        
-        eventos_procesados.append(evento)   
-        
+
+        # Enriquecer el evento antes de guardarlo en Mongo
+        evento['_kafka_offset'] = msg.offset()
+        evento['_kafka_partition'] = msg.partition()
+        evento['_ingested_at'] = datetime.now(timezone.utc).isoformat()
+
+        # Clasificación TrustSync
+        es_bloqueado = (evento.get('cobrador') == 'ci'
+                        and evento.get('motivo') == 'PA')
         es_cb = evento.get('motivo') == 'CB'
-        es_bloqueado = evento.get('cobrador') == 'ci' and evento.get('motivo') == 'PA'
-        
-        estado = "BLOQUEADO" if es_bloqueado else ("OK" if es_cb else "PENDIENTE")
-        
-        print(f"[offset: {msg.offset()}] id_recibo: {evento.get('id_recibo')}, numsituarecib: {evento.get('numsituarecib')}, motivo: {evento.get('motivo')}, cobrador: {evento.get('cobrador')}, estado: {estado}\n")
-        
-        
+        evento['estado_evento'] = (
+            'BLOQUEADO' if es_bloqueado else
+            'COBRO'     if es_cb else
+            'MOVIMIENTO'
+        )
+
+        # Insertar en MongoDB Atlas
+        coleccion.insert_one(evento)
+        eventos_insertados += 1
+
+        print(f"[offset {msg.offset()}] "
+              f"{evento['estado_evento']:10} | "
+              f"{evento.get('id_recibo')} | "
+              f"{evento.get('motivo')} | "
+              f"{evento.get('cobrador')}")
+
+except KeyboardInterrupt:
+    print(f"\n⛔ Parado. Eventos insertados en Atlas: {eventos_insertados}")
+
 finally:
     consumer.close()
-    print(f"Total de mensajes recibidos: {mensajes_recibidos}")
-      
-    ruta_csv = os.path.expanduser('~/trustsync/proyectos/trustsync_dbt/seeds/eventos_procesados.csv')
-    if eventos_procesados:
-        with open(ruta_csv, mode='w', newline='') as file: 
-            writer = csv.DictWriter(file, fieldnames=eventos_procesados[0].keys())
-            writer.writeheader()
-            writer.writerows(eventos_procesados)
-            
-        print(f"Archivo 'eventos_procesados.csv' creado con {len(eventos_procesados)} eventos procesados.")   
-    else:
-        print("No se procesaron eventos, no se creó el archivo CSV.")
-
+    mongo_client.close()
+    print("✅ Conexiones cerradas.")

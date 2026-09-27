@@ -30,6 +30,7 @@ def get_kafka_config() -> dict:
         'acks': 'all'
     }
     
+
 def delivery_report(err, msg):
     """
     Callback function to report the delivery status of a message.
@@ -42,12 +43,39 @@ def delivery_report(err, msg):
 MOTIVOS = ['DB','CB','PA','PB']
 COBRADORES = ['ag1','ag2','ag3','ci']
 
+COMENTARIOS_CON_PII = [
+    "El asegurado Juan García Martínez con DNI 12345678A notificó el siniestro por teléfono 612345678",
+    "Titular María López Ruiz, NIF 87654321B, domicilio en Calle Mayor 15, Madrid. Contacto: maria.lopez@email.com",
+    "Peritaje realizado en domicilio del asegurado Carlos Fernández, DNI 11223344C, Avenida Diagonal 200, Barcelona",
+    "Cobrador ag1 contactó con Ana Martínez García (DNI 55667788D) para gestionar el impago del recibo",
+    "Siniestro declarado por Pedro Sánchez López, teléfono 698765432, email pedro.sanchez@gmail.com",
+    "Asegurado Roberto González, NIF 99887766E, residente en Paseo de la Castellana 45, Madrid 28046",
+    "Expediente abierto para Laura Jiménez Pérez DNI 44332211F tras accidente de tráfico en A-6 km 23",
+    "Notificación enviada a Isabel Romero (NIF 22334455G) en Calle Serrano 78, Madrid. Tlf: 911234567",
+]
+
+COMENTARIOS_SIN_PII = [
+    "Siniestro procesado correctamente según protocolo interno",
+    "Documentación completa recibida y validada por el departamento",
+    "Recibo pendiente de revisión por el equipo de cobros",
+    "Movimiento registrado automáticamente por el sistema",
+    "Incidencia resuelta sin necesidad de intervención manual",
+]
+
+def generar_comentario():
+    # 65% de probabilidad de comentario con PII
+    if random.random() < 0.65:
+        return random.choice(COMENTARIOS_CON_PII)
+    return random.choice(COMENTARIOS_SIN_PII)
+
+
 def generar_evento_cobro() -> dict:
     return {
         "id_recibo": f"REC-{random.randint(1, 20):04d}",
         "numsituarecib": random.randint(1, 20),
         "motivo": random.choice(MOTIVOS),
         "cobrador": random.choice(COBRADORES),
+        "comentario": generar_comentario(),
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
