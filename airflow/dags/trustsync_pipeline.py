@@ -69,9 +69,16 @@ with DAG(
         task_id='dbt_test',
         bash_command=f'cd {DBT_DIR} && dbt test',
     )
-    
+    ai_monitor = BashOperator(
+    task_id='ai_monitor',
+    bash_command=(
+        f'cd {KAFKA_DIR} && '
+        f'export $(grep -v "^#" .env | xargs) && '
+        f'python agent_monitor.py'
+    ),
+)
 
     
-    kafka_producer >> kafka_consumer >> pii_scan >> gx_valitation >> dbt_run >> dbt_test
+    kafka_producer >> kafka_consumer >> pii_scan >> gx_valitation >> dbt_run >> dbt_test >> ai_monitor
     
     
