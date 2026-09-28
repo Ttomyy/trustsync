@@ -52,6 +52,14 @@ with DAG(
         ),
     )
 
+    gx_valitation = BashOperator(
+        task_id='great_validation',
+        bash_command=(
+            f'cd {KAFKA_DIR} && '
+            f'export $(grep -v "^#" .env | xargs) && '
+            f'python gx_validator.py'
+        ),
+    )
     dbt_run = BashOperator(
         task_id='dbt_run',
         bash_command=f'cd {DBT_DIR} && dbt run',
@@ -64,6 +72,6 @@ with DAG(
     
 
     
-    kafka_producer >> kafka_consumer >> pii_scan >> dbt_run >> dbt_test
+    kafka_producer >> kafka_consumer >> pii_scan >> gx_valitation >> dbt_run >> dbt_test
     
     
