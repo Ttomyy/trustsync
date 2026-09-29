@@ -42,7 +42,7 @@ jobs:
                 type: duckdb
                 path: ./trustsync.duckdb
                 threads: 4
-            targets: dev
+            target: dev
           EOF
           # Eliminar indentación extra
           sed -i 's/^          //' ~/.dbt/profiles.yml
