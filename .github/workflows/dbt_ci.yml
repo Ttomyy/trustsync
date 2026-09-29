@@ -44,7 +44,10 @@ jobs:
                 threads: 4
             targets: dev
           EOF
-        
+          # Eliminar indentación extra
+          sed -i 's/^          //' ~/.dbt/profiles.yml
+          cat ~/.dbt/profiles.yml    
+
       - name: DBT deps
         working-directory: ./dbt
         run: dbt deps
