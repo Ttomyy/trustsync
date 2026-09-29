@@ -1,0 +1,51 @@
+name: DBT CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  dbt-test:
+  runs-on: ubuntu-latest
+
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with: 
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: |
+        pip install dbt-duckdb
+
+    - name: Create profiles.yml
+      run: |
+        mkdir -p ~/.dbt
+        cat <<EOF > ~/.dbt/profiles.yml
+        trustsync_dbt:
+          outputs:
+            dev:
+              type: duckdb
+              path: ./trustsync.duckdb
+              threads: 4
+            prod:
+              type: duckdb
+              path: ./trustsync.duckdb
+              threads: 4
+          targets: dev
+        EOF
+      
+    - name: DBT deps
+      working-directory: ./dbt
+      run: dbt deps
+
+    - name: DBT build
+      working-directoru: ./dbt
+      run: dbt build --no-partial-parse
+
+        
