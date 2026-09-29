@@ -71,7 +71,7 @@ x-airflow-common:
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     # Busca esta línea en docker-compose.yaml:
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-python-dotenv confluent-kafka pymongo presidio-analyzer presidio-anonymizer dbt-duckdb great-expectations}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-python-dotenv confluent-kafka pymongo presidio-analyzer presidio-anonymizer dbt-duckdb great-expectations google-generativeai}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
