@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: fct_cobros_validados
+    description: "Validación de cobros (CB) evaluando la existencia de un movimiento previo 'DB', presencia de 'PB' y ausencia de 'PA' bloqueador."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: 
+            combination_of_columns:
+              - id_recibo
+              - num_situa_recib_cb
+    columns:
+      - name: id_recibo
+        description: "Identificador único del recibo. Clave foránea y parte de la PK compuesta."
+        tests:
+          - not_null
+          - relationships:
+              arguments: 
+                to: ref('cobros_r')
+                field: idrecibo
+
+      - name: num_situa_recib_cb
+        description: "Secuencial o número de situación correspondiente al movimiento CB. Parte de la PK compuesta."
+        tests:
+          - not_null
+
+      - name: cobrador
+        description: "Código o identificador del cobrador asignado al cobro."
+        tests:
+          - not_null
+
+      - name: indicador_marca
+        description: "Flag binario (1 o 0). Vale 1 si el cobro cumple todas las condiciones de negocio, 0 en caso contrario."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments: 
+                values: [0, 1]
