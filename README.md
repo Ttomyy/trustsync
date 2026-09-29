@@ -1,3 +1,4 @@
+![DBT CI](https://github.com/Ttomyy/trustsync/actions/workflows/dbt_ci.yml/badge.svg)
 # TrustSync — Data Governance & Automated Privacy Pipeline
 
 PoC enfocada en **Gobierno del Dato, Privacidad Automatizada (GDPR) y Calidad** en flujos analíticos del sector asegurador. 
